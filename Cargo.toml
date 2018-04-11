@@ -1,0 +1,9 @@
+[package]
+name = "ellipticoin"
+version = "0.1.0"
+authors = ["Mason Fischer <mason@kissr.co>"]
+description = "A library for building Elliptcoin smart contracts"
+license = "MIT"
+
+[dependencies]
+wasm-rpc = "0.1.0"
