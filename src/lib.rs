@@ -1,73 +1,101 @@
+#![no_std]
+#![feature(alloc)]
+extern crate alloc;
 extern crate wasm_rpc;
-use wasm_rpc::*;
+use alloc::string::String;
+use alloc::vec::Vec;
+use core::intrinsics::transmute;
 
-extern {
+use wasm_rpc::{Bytes, Dereferenceable, Referenceable};
+
+extern "C" {
     fn _sender() -> *const u8;
     fn _block_hash() -> *const u8;
-    fn read(key: *const u8) -> *const u8;
-    fn _call(code: *const u8, method: *const u8, params: *const u8, storage_context: *const u8) -> *const u8;
-    fn write(key: *const u8, value: *const u8);
+    fn _block_winner() -> *const u8;
+    fn _secp256k1_recover(message: *const u8, signature: *const u8, recovery_id: u8) -> *const u8;
+    fn _read(key: *const u8) -> *const u8;
+    fn _call(
+        code: *const u8,
+        method: *const u8,
+        params: *const u8,
+        storage_context: *const u8,
+    ) -> *const u8;
+    fn _write(key: *const u8, value: *const u8);
+}
+pub fn read_u32<K: Into<Vec<u8>>>(key: K) -> u32 {
+    read(key.into()).value()
 }
 
-pub struct ElipitcoinBlockchain {}
+pub fn read_u64<K: Into<Vec<u8>>>(key: K) -> u64 {
+    read(key.into()).value()
+}
 
-impl BlockChain for ElipitcoinBlockchain {
-    fn block_hash(&self) -> Vec<u8> {
-        unsafe {
-            _block_hash().as_raw_bytes()
-        }
-    }
+pub fn read_int<K: Into<Vec<u8>>>(key: K) -> u64 {
+    read_u64(key)
+}
 
-    fn read(&self, key: Vec<u8>) -> Vec<u8> {
-      unsafe {
-        read(key.as_pointer()).as_raw_bytes()
-      }
-    }
+pub fn write_u32<K: Into<Vec<u8>>>(key: K, value: u32) {
+    write(
+        key.into(),
+        unsafe { transmute::<u32, [u8; 4]>((value.to_be())) }.to_vec(),
+    );
+}
 
-    fn sender(&self) -> Vec<u8> {
-        unsafe {
-            _sender().as_raw_bytes()
-        }
-    }
+pub fn write_u64<K: Into<Vec<u8>>>(key: K, value: u64) {
+    write(
+        key.into(),
+        unsafe { transmute::<u64, [u8; 8]>((value.to_be())) }.to_vec(),
+    );
+}
 
-    fn write(&self, key: Vec<u8>, value: Vec<u8>) {
-        unsafe {
-            write(
-                key.as_pointer(),
-                value.as_pointer(),
-            );
-        }
-    }
+pub fn write_int<K: Into<Vec<u8>>>(key: K, value: u64) {
+    write(
+        key.into(),
+        unsafe { transmute::<u64, [u8; 8]>(value.to_be()) }.to_vec(),
+    );
+}
 
-    fn call(&self, code: Vec<u8>, method: String, params: Vec<u8>, storage_context: Vec<u8>) -> Vec<u8> {
-        unsafe {
-            _call(
-                code.as_pointer(),
-                method.as_pointer(),
-                params.as_pointer(),
-                storage_context.as_pointer()
-            ).as_raw_bytes()
-        }
+pub fn block_hash() -> Vec<u8> {
+    unsafe { _block_hash().as_raw_bytes() }
+}
+
+pub fn block_winner() -> Vec<u8> {
+    unsafe { _block_winner().as_raw_bytes() }
+}
+
+pub fn secp256k1_recover(message: Vec<u8>, signature: Vec<u8>, recovery_id: u8) -> Vec<u8> {
+    unsafe {
+        _secp256k1_recover(message.as_pointer(), signature.as_pointer(), recovery_id).as_raw_bytes()
     }
 }
 
-pub trait BlockChain {
-    fn read(&self, key: Vec<u8>) -> Vec<u8>;
-    fn write(&self, key: Vec<u8>, value: Vec<u8>);
-    fn block_hash(&self) -> Vec<u8>;
-    fn sender(&self) -> Vec<u8>;
-    fn call(&self, code: Vec<u8>, method: String, params: Vec<u8>, storage_context: Vec<u8>) -> Vec<u8>;
+pub fn read<K: Into<Vec<u8>>>(key: K) -> Vec<u8> {
+    unsafe { _read(key.into().as_pointer()).as_raw_bytes() }
+}
 
-    fn read_u32(&self, key: Vec<u8>) -> u32 {
-        self.read(key).value()
+pub fn sender() -> Vec<u8> {
+    unsafe { _sender().as_raw_bytes() }
+}
+
+pub fn update<K: Into<Vec<u8>> + Clone>(key: K, update_function: &Fn(Vec<u8>) -> Vec<u8>) {
+    let value_before = read(key.clone());
+    let value_after = update_function(value_before);
+    write(key, value_after);
+}
+
+pub fn write<K: Into<Vec<u8>>, V: Into<Vec<u8>>>(key: K, value: V) {
+    unsafe {
+        _write(key.into().as_pointer(), value.into().as_pointer());
     }
+}
 
-    fn read_u64(&self, key: Vec<u8>) -> u64 {
-        self.read(key).value()
-    }
-
-    fn write_u64(&self, key: Vec<u8>, value: u64) {
-        FromBytes::from_u64(value);
-        self.write(key, FromBytes::from_u64(value));
+pub fn call(code: Vec<u8>, method: String, params: Vec<u8>, storage_context: Vec<u8>) -> Vec<u8> {
+    unsafe {
+        _call(
+            code.as_pointer(),
+            method.as_pointer(),
+            params.as_pointer(),
+            storage_context.as_pointer(),
+        ).as_raw_bytes()
     }
 }
