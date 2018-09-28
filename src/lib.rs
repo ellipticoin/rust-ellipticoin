@@ -37,21 +37,21 @@ pub fn read_int<K: Into<Vec<u8>>>(key: K) -> u64 {
 pub fn write_u32<K: Into<Vec<u8>>>(key: K, value: u32) {
     write(
         key.into(),
-        unsafe { transmute::<u32, [u8; 4]>((value.to_be())) }.to_vec(),
+        unsafe { transmute::<u32, [u8; 4]>(value) }.to_vec(),
     );
 }
 
 pub fn write_u64<K: Into<Vec<u8>>>(key: K, value: u64) {
     write(
         key.into(),
-        unsafe { transmute::<u64, [u8; 8]>((value.to_be())) }.to_vec(),
+        unsafe { transmute::<u64, [u8; 8]>(value) }.to_vec(),
     );
 }
 
 pub fn write_int<K: Into<Vec<u8>>>(key: K, value: u64) {
     write(
         key.into(),
-        unsafe { transmute::<u64, [u8; 8]>(value.to_be()) }.to_vec(),
+        unsafe { transmute::<u64, [u8; 8]>(value) }.to_vec(),
     );
 }
 
