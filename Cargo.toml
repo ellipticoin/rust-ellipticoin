@@ -1,9 +1,9 @@
 [package]
 name = "ellipticoin"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["Mason Fischer <mason@kissr.co>"]
 description = "A library for building Elliptcoin smart contracts"
 license = "MIT"
 
 [dependencies]
-wasm-rpc = {path = "../rust-wasm-rpc/wasm-rpc"}
+wasm-rpc = "0.2.7"
