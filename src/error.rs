@@ -1,1 +1,1 @@
-pub use wasm_rpc::error::{Error, ErrorStruct};
+pub use wasm_rpc::error::Error;
