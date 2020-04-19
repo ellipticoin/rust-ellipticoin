@@ -2,10 +2,9 @@ extern crate alloc;
 extern crate wasm_rpc;
 extern crate wasm_rpc_macros;
 
-pub use wasm_rpc::{Bytes, Dereferenceable, FromBytes, Referenceable, ToBytes, Value};
+pub use wasm_rpc::{abort,Referenceable,Dereferenceable, Bytes, FromBytes, ToBytes, Value, error, BTreeMap, value};
 pub use wasm_rpc_macros::export;
-use std::mem::transmute;
-pub mod error;
+pub use wasm_rpc::serde_bytes;
 
 extern "C" {
     fn __address() -> *const u8;
@@ -37,29 +36,23 @@ impl Keyable for Vec<u8> {
     }
 }
 
-impl Keyable for &str {
-    fn to_key(self: Self) -> Vec<u8> {
-        self.as_bytes().to_vec()
-    }
-}
-
-
-pub fn get_memory<K: Keyable,V: FromBytes,>(key: K) -> V {
-    let v: Vec<u8> = unsafe { __get_memory(key.to_key().as_pointer()) }.as_raw_bytes();
+pub fn get_memory<K: ToBytes,V: FromBytes,>(key: K) -> V {
+    let v: Vec<u8> = unsafe { __get_memory(key.to_bytes().as_pointer()) }.as_raw_bytes();
     FromBytes::from_bytes(v)
 }
 
-pub fn set_memory<K: Keyable, V: ToBytes>(key: K, value: V) {
-    unsafe { __set_memory(key.to_key().as_pointer(), value.to_bytes().as_pointer()) }
+pub fn set_memory<K: ToBytes, V: ToBytes>(key: K, value: V) {
+    unsafe { __set_memory(key.to_bytes().as_pointer(), value.to_bytes().as_pointer()) }
+    // unsafe { __set_memory(1 as *const u8, 1 as *const u8) }
 }
 
-pub fn get_storage<V: FromBytes, K: Keyable>(key: K) -> V {
-    let v: Vec<u8> = unsafe { __get_storage(key.to_key().as_pointer()) }.as_raw_bytes();
+pub fn get_storage<K: ToBytes, V: FromBytes>(key: K) -> V {
+    let v: Vec<u8> = unsafe { __get_storage(key.to_bytes().as_pointer()) }.as_raw_bytes();
     FromBytes::from_bytes(v)
 }
 
-pub fn set_storage<K: Keyable, V: ToBytes>(key: K, value: V) {
-    unsafe { __set_storage(key.to_key().as_pointer(), value.to_bytes().as_pointer()) }
+pub fn set_storage<K: ToBytes, V: ToBytes>(key: K, value: V) {
+    unsafe { __set_storage(key.to_bytes().as_pointer(), value.to_bytes().as_pointer()) }
 }
 
 pub fn address() -> Vec<u8> {
@@ -87,12 +80,12 @@ pub fn caller() -> Vec<u8> {
 }
 
 pub fn block_number() -> u64 {
-    unsafe { __block_number() }.to_i64() as u64
+    unsafe { FromBytes::from_bytes(__block_number().as_raw_bytes()) }
 }
 
 
-pub fn call(contract_address: Vec<u8>, function_name: &str, arguments: Vec<Value>) -> (u32, Value) {
-    from_bytes(unsafe {
+pub fn call(contract_address: Vec<u8>, function_name: &str, arguments: Vec<Value>) -> Value {
+    FromBytes::from_bytes(unsafe {
         __call(
             contract_address.as_pointer(),
             function_name.to_string().as_pointer(),
@@ -102,26 +95,3 @@ pub fn call(contract_address: Vec<u8>, function_name: &str, arguments: Vec<Value
 }
 
 pub type Result = (u32, Value);
-pub fn vm_panic() -> Result {
-    (1, "vm panic 2".to_string().into())
-}
-
-pub fn from_bytes(bytes: Vec<u8>) -> Result {
-    if bytes.len() == 0 {
-        (1, "vm bytes length is zero".to_string().into())
-    } else {
-        let bytes_clone = bytes.clone();
-        let (return_code_bytes, return_value_bytes) = bytes_clone.split_at(4);
-        let mut return_code_bytes_fixed: [u8; 4] = Default::default();
-        if bytes.len() == 0 {
-            (1, "vm error".to_string().into())
-        } else {
-            return_code_bytes_fixed.copy_from_slice(&return_code_bytes[0..4]);
-            let return_code: u32 = unsafe { transmute(return_code_bytes_fixed) };
-
-            let return_value: Value = wasm_rpc::from_slice(return_value_bytes).expect("failed to parse return_value");
-
-            (return_code, return_value)
-        }
-    }
-}
