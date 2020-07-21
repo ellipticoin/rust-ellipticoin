@@ -1,17 +1,19 @@
-extern crate alloc;
-extern crate wasm_rpc;
+#[macro_use]
+extern crate lazy_static;
+pub extern crate wasm_rpc;
 extern crate wasm_rpc_macros;
-
-pub use wasm_rpc::{abort,Referenceable,Dereferenceable, Bytes, FromBytes, ToBytes, Value, error, BTreeMap, value};
+pub mod constants;
+pub use wasm_rpc::{pointer, serde_cbor};
+use wasm_rpc::{
+    serde::{de::DeserializeOwned, Serialize},
+    serde_cbor::{from_slice, to_vec, Value},
+};
 pub use wasm_rpc_macros::export;
-pub use wasm_rpc::serde_bytes;
+pub use wasm_rpc_macros::export_native;
 
 extern "C" {
     fn __address() -> *const u8;
     fn __sender() -> *const u8;
-    fn __block_hash() -> *const u8;
-    fn __block_number() -> *const u8;
-    fn __block_winner() -> *const u8;
     fn __contract_address() -> *const u8;
     fn __caller() -> *const u8;
     fn __call(
@@ -23,75 +25,76 @@ extern "C" {
     fn __set_memory(key: *const u8, value: *const u8);
     fn __get_storage(key: *const u8) -> *const u8;
     fn __set_storage(key: *const u8, value: *const u8);
-
 }
 
-pub trait Keyable {
-    fn to_key(self: Self) -> Vec<u8>;
-}
+pub trait Contract {
+    fn get_memory_raw(&mut self, key: &[u8]) -> Vec<u8>;
+    fn set_memory_raw(&mut self, key: &[u8], value: &[u8]);
+    fn get_storage_raw(&mut self, key: &[u8]) -> Vec<u8>;
+    fn set_storage_raw(&mut self, key: &[u8], value: &[u8]);
+    fn contract_address(&self) -> Vec<u8>;
+    fn sender(&self) -> Vec<u8>;
+    fn caller(&self) -> Vec<u8>;
+    fn call<D: DeserializeOwned + 'static + std::convert::From<Value>>(
+        contract_address: Vec<u8>,
+        function_name: &str,
+        arguments: Vec<Value>,
+    ) -> Result<D, serde_cbor::Error>;
+    fn get_memory<V: DeserializeOwned>(&mut self, key: &[u8]) -> Result<V, serde_cbor::Error> {
+        from_slice(&self.get_memory_raw(key))
+    }
 
-impl Keyable for Vec<u8> {
-    fn to_key(self: Self) -> Vec<u8> {
-        self
+    fn set_memory<V: Serialize>(&mut self, key: &[u8], value: V) {
+        self.set_memory_raw(key, &to_vec(&value).unwrap())
+    }
+
+    fn get_storage<V: DeserializeOwned>(&mut self, key: &[u8]) -> Result<V, serde_cbor::Error> {
+        from_slice(&self.get_storage_raw(key))
+    }
+
+    fn set_storage<V: Serialize>(&mut self, key: &[u8], value: V) {
+        self.set_storage_raw(key, &to_vec(&value).unwrap())
     }
 }
 
-pub fn get_memory<K: ToBytes,V: FromBytes,>(key: K) -> V {
-    let v: Vec<u8> = unsafe { __get_memory(key.to_bytes().as_pointer()) }.as_raw_bytes();
-    FromBytes::from_bytes(v)
+pub fn get_memory<V: DeserializeOwned>(key: &[u8]) -> Result<V, serde_cbor::Error> {
+    pointer::to_value::<V>(unsafe { __get_memory(pointer::from_bytes(key)) })
 }
 
-pub fn set_memory<K: ToBytes, V: ToBytes>(key: K, value: V) {
-    unsafe { __set_memory(key.to_bytes().as_pointer(), value.to_bytes().as_pointer()) }
-    // unsafe { __set_memory(1 as *const u8, 1 as *const u8) }
+pub fn set_memory<V: Serialize>(key: &[u8], value: V) {
+    unsafe { __set_memory(pointer::from_bytes(key), pointer::from_value::<V>(&value)) }
 }
 
-pub fn get_storage<K: ToBytes, V: FromBytes>(key: K) -> V {
-    let v: Vec<u8> = unsafe { __get_storage(key.to_bytes().as_pointer()) }.as_raw_bytes();
-    FromBytes::from_bytes(v)
+pub fn get_storage<V: DeserializeOwned>(key: &[u8]) -> Result<V, serde_cbor::Error> {
+    pointer::to_value::<V>(unsafe { __get_storage(pointer::from_bytes(key)) })
 }
 
-pub fn set_storage<K: ToBytes, V: ToBytes>(key: K, value: V) {
-    unsafe { __set_storage(key.to_bytes().as_pointer(), value.to_bytes().as_pointer()) }
+pub fn set_storage<V: Serialize>(key: &[u8], value: V) {
+    unsafe { __set_storage(pointer::from_bytes(key), pointer::from_value::<V>(&value)) }
 }
-
-pub fn address() -> Vec<u8> {
-    let v: Vec<u8> = unsafe { __block_winner() }.as_raw_bytes();
-    v
-}
-
-pub fn block_winner() -> Vec<u8> {
-    let v: Vec<u8> = unsafe { __block_winner() }.as_raw_bytes();
-    v
-}
-
 
 pub fn contract_address() -> Vec<u8> {
-    unsafe { __contract_address().as_raw_bytes() }
+    pointer::to_bytes(unsafe { __contract_address() }).to_vec()
 }
 
 pub fn sender() -> Vec<u8> {
-    unsafe { __sender().as_raw_bytes() }
+    pointer::to_bytes(unsafe { __sender() }).to_vec()
 }
-
 
 pub fn caller() -> Vec<u8> {
-    unsafe { __caller().as_raw_bytes() }
+    pointer::to_bytes(unsafe { __caller() }).to_vec()
 }
 
-pub fn block_number() -> u64 {
-    unsafe { FromBytes::from_bytes(__block_number().as_raw_bytes()) }
-}
-
-
-pub fn call(contract_address: Vec<u8>, function_name: &str, arguments: Vec<Value>) -> Value {
-    FromBytes::from_bytes(unsafe {
+pub fn call<D: DeserializeOwned + 'static + std::convert::From<Value>>(
+    contract_address: Vec<u8>,
+    function_name: &str,
+    arguments: Vec<Value>,
+) -> Result<D, serde_cbor::Error> {
+    pointer::to_value(unsafe {
         __call(
-            contract_address.as_pointer(),
-            function_name.to_string().as_pointer(),
-            arguments.as_pointer(),
+            pointer::from_value(&Value::Bytes(contract_address)),
+            pointer::from_value(&Value::Text(function_name.to_string())),
+            pointer::from_value::<Vec<Value>>(&arguments.into()),
         )
-    }.as_raw_bytes())
+    })
 }
-
-pub type Result = (u32, Value);

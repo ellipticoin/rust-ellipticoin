@@ -1,6 +1,6 @@
 [package]
 name = "ellipticoin"
-version = "0.0.2"
+version = "0.0.4"
 authors = ["Mason Fischer <mason@kissr.co>"]
 description = "A library for building Elliptcoin smart contracts"
 license = "MIT"
@@ -19,5 +19,6 @@ panic = 'abort'
 incremental = false
 
 [dependencies]
-wasm-rpc = { path = "../rust-wasm-rpc/wasm-rpc"}
-wasm-rpc-macros =  { path = "../rust-wasm-rpc/wasm-rpc-macros"}
+lazy_static = "1.4.0"
+wasm-rpc = "0.2.15"
+wasm-rpc-macros = "0.2.15"
