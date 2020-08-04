@@ -1,6 +1,6 @@
 [package]
 name = "ellipticoin"
-version = "0.0.4"
+version = "0.0.5"
 authors = ["Mason Fischer <mason@kissr.co>"]
 description = "A library for building Elliptcoin smart contracts"
 license = "MIT"
@@ -20,5 +20,6 @@ incremental = false
 
 [dependencies]
 lazy_static = "1.4.0"
+serde = { version = "1.0.114", features = ["derive"] }
 wasm-rpc = "0.2.15"
 wasm-rpc-macros = "0.2.15"

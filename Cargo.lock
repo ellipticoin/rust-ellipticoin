@@ -2,9 +2,10 @@
 # It is not intended for manual editing.
 [[package]]
 name = "ellipticoin"
-version = "0.0.3"
+version = "0.0.4"
 dependencies = [
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "serde 1.0.114 (registry+https://github.com/rust-lang/crates.io-index)",
  "wasm-rpc 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "wasm-rpc-macros 0.2.15 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
