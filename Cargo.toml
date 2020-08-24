@@ -19,7 +19,9 @@ panic = 'abort'
 incremental = false
 
 [dependencies]
-lazy_static = "1.4.0"
-serde = { version = "1.0.114", features = ["derive"] }
+lazy_static = "*"
+sha2 = "0.9.1"
+serde = { version = "*", features = ["derive"] }
+ellipticoin_macros = { path = "../rust-ellipticoin-macros"}
 wasm-rpc = "0.2.15"
 wasm-rpc-macros = "0.2.15"
