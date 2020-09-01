@@ -21,3 +21,11 @@ pub fn is_system_address(address: Address) -> bool {
         false
     }
 }
+
+pub fn db_key(contract_address: &([u8; 32], &'static str), key: &[u8]) -> Vec<u8> {
+    [
+        &sha256([&contract_address.0[..], contract_address.1.as_bytes()].concat())[..],
+        key,
+    ]
+    .concat()
+}

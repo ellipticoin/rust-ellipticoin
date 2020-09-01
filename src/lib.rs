@@ -7,9 +7,8 @@ extern crate wasm_rpc_macros;
 
 pub use ellipticoin_macros::*;
 pub mod constants;
-pub mod contract_functions;
 pub mod helpers;
-use helpers::sha256;
+use helpers::db_key;
 use wasm_rpc::{
     error::Error,
     serde::{de::DeserializeOwned, Deserialize, Serialize},
@@ -27,59 +26,6 @@ pub trait StorageAPI {
     fn get(&mut self, key: &[u8]) -> Vec<u8>;
     fn set(&mut self, key: &[u8], value: &[u8]);
 }
-
-pub trait ToKey {
-    fn to_key(self) -> Vec<u8>;
-}
-
-impl ToKey for &[u8] {
-    fn to_key(self) -> Vec<u8> {
-        self.to_vec()
-    }
-}
-
-impl ToKey for Vec<u8> {
-    fn to_key(self) -> Vec<u8> {
-        self
-    }
-}
-
-impl ToKey for Address {
-    fn to_key(mut self) -> Vec<u8> {
-        sha256(self.to_vec()).to_vec()
-    }
-}
-
-macro_rules! replace_expr {
-    ($_t:tt $sub:ty) => {
-        $sub
-    };
-}
-
-macro_rules! impl_to_key_tuple {
-    ( $( $name:ident )+ ) => {
-        impl<T: ToKey> ToKey for ($(replace_expr!(($name) T),)+)
-        {
-            fn to_key(self) -> Vec<u8> {
-                let ($($name,)+) = self;
-                vec![$($name.to_key(),)+].concat()
-            }
-        }
-    };
-}
-
-impl_to_key_tuple! { a }
-impl_to_key_tuple! { a b }
-impl_to_key_tuple! { a b c }
-impl_to_key_tuple! { a b c d }
-impl_to_key_tuple! { a b c d e }
-impl_to_key_tuple! { a b c d e f }
-impl_to_key_tuple! { a b c d e f g }
-impl_to_key_tuple! { a b c d e f g h }
-impl_to_key_tuple! { a b c d e f g h i }
-impl_to_key_tuple! { a b c d e f g h i j }
-impl_to_key_tuple! { a b c d e f g h i j k }
-impl_to_key_tuple! { a b c d e f g h i j k l }
 
 #[derive(Clone, Deserialize, Serialize, PartialEq, Debug)]
 pub struct Token {
@@ -115,8 +61,14 @@ impl Address {
     }
 }
 
+impl Into<Vec<u8>> for Address {
+    fn into(mut self) -> Vec<u8> {
+        self.to_vec()
+    }
+}
+
+
 pub trait API: MemoryAPI + StorageAPI {
-    fn contract_address(&self) -> ([u8; 32], String);
     fn sender(&self) -> [u8; 32];
     fn caller(&self) -> Address;
     fn call<D: DeserializeOwned>(
@@ -128,31 +80,31 @@ pub trait API: MemoryAPI + StorageAPI {
     ) -> Result<D, Box<Error>>;
     fn get_memory<K: Into<Vec<u8>>, V: DeserializeOwned>(
         &mut self,
+        contract_address: ([u8; 32], &'static str),
         key: K,
     ) -> Result<V, serde_cbor::Error> {
-        from_slice(&MemoryAPI::get(self, &key.into()))
+        from_slice(&MemoryAPI::get(self, &db_key(&contract_address, &key.into())))
     }
 
-    fn set_memory<K: Into<Vec<u8>>, V: Serialize>(&mut self, key: K, value: V) {
-        MemoryAPI::set(self, &key.into(), &to_vec(&value).unwrap())
+    fn set_memory<K: Into<Vec<u8>>, V: Serialize>(&mut self, 
+
+        contract_address: ([u8; 32], &'static str),
+key: K, value: V) {
+        MemoryAPI::set(self, &db_key(&contract_address, &key.into()), &to_vec(&value).unwrap())
     }
 
     fn get_storage<K: Into<Vec<u8>>, V: DeserializeOwned>(
         &mut self,
+        contract_address: ([u8; 32], &'static str),
         key: K,
     ) -> Result<V, serde_cbor::Error> {
-        from_slice(&StorageAPI::get(self, &key.into()))
+        from_slice(&StorageAPI::get(self, &db_key(&contract_address, &key.into())))
     }
 
-    fn set_storage<K: Into<Vec<u8>>, V: Serialize>(&mut self, key: K, value: V) {
-        StorageAPI::set(self, &key.into(), &to_vec(&value).unwrap())
-    }
+    fn set_storage<K: Into<Vec<u8>>, V: Serialize>(&mut self,
+        contract_address: ([u8; 32], &'static str),
 
-    fn get_code(&mut self, contract_address: &[u8]) -> Vec<u8> {
-        StorageAPI::get(self, contract_address)
-    }
-
-    fn set_code(&mut self, contract_address: &[u8], value: &[u8]) {
-        StorageAPI::set(self, contract_address, value)
+key: K, value: V) {
+        StorageAPI::set(self, &db_key(&contract_address, &key.into()), &to_vec(&value).unwrap())
     }
 }
