@@ -106,6 +106,13 @@ impl Address {
             Address::Contract((legislator, name)) => [&legislator[..], name.as_bytes()].concat(),
         }
     }
+
+    pub fn as_public_key(&mut self) -> Option<[u8; 32]> {
+        match self {
+            Address::PublicKey(address) => Some(*address),
+            _ => None,
+        }
+    }
 }
 
 pub trait API: MemoryAPI + StorageAPI {
