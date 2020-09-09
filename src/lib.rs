@@ -7,6 +7,7 @@ extern crate wasm_rpc_macros;
 
 pub use ellipticoin_macros::*;
 pub mod constants;
+pub mod macros;
 pub mod helpers;
 use helpers::db_key;
 use wasm_rpc::{
@@ -30,16 +31,16 @@ pub trait StorageAPI {
 #[derive(Clone, Deserialize, Serialize, PartialEq, Debug)]
 pub struct Token {
     pub issuer: Address,
-    pub token_id: [u8; 32],
+    pub id: [u8; 32],
 }
 
 impl Into<Vec<u8>> for Token {
     fn into(mut self) -> Vec<u8> {
-        [self.issuer.to_vec(), self.token_id.to_vec()].concat()
+        [self.issuer.to_vec(), self.id.to_vec()].concat()
     }
 }
 
-#[derive(Clone, Deserialize, Serialize, PartialEq, Debug)]
+#[derive(Clone, Hash, Deserialize, Serialize, PartialEq, Eq, Debug)]
 pub enum Address {
     PublicKey([u8; 32]),
     Contract(([u8; 32], String)),
