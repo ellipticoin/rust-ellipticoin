@@ -4,7 +4,7 @@ macro_rules! pay {
         token::transfer_from(
             $api,
             $token,
-            Address::Contract((SYSTEM_ADDRESS, CONTRACT_NAME.to_string())),
+            Address::Contract(CONTRACT_NAME.to_string()),
             $recipient,
             $amount,
         )
@@ -18,7 +18,7 @@ macro_rules! charge {
             $api,
             $token,
             $recipient,
-            Address::Contract((SYSTEM_ADDRESS, CONTRACT_NAME.to_string())),
+            Address::Contract(CONTRACT_NAME.to_string()),
             $amount,
         )
     };
