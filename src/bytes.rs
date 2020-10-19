@@ -2,8 +2,6 @@ use core::{
     cmp::{self},
     fmt::{self, Debug},
 };
-use std::convert::TryInto;
-use types::Address;
 pub use types::*;
 use wasm_rpc::serde::{
     de::{self, Deserializer, SeqAccess, Visitor},
@@ -97,11 +95,5 @@ impl<'de> Deserialize<'de> for Bytes {
 impl Into<Bytes> for Vec<u8> {
     fn into(self) -> Bytes {
         Bytes { inner: self }
-    }
-}
-
-impl From<Bytes> for Address {
-    fn from(bytes: Bytes) -> Self {
-        Address::PublicKey(bytes.into_vec()[..].try_into().unwrap())
     }
 }

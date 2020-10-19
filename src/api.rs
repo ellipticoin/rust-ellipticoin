@@ -1,9 +1,8 @@
 use crate::types::Address;
 use helpers::db_key;
 use wasm_rpc::{
-    error::Error,
     serde::{de::DeserializeOwned, Serialize},
-    serde_cbor::{from_slice, to_vec, Value},
+    serde_cbor::{from_slice, to_vec},
 };
 pub use wasm_rpc::{pointer, serde_cbor};
 pub use wasm_rpc_macros::{export, export_native};
@@ -19,14 +18,7 @@ pub trait StorageAPI {
 }
 
 pub trait API: MemoryAPI + StorageAPI {
-    fn sender(&self) -> [u8; 32];
     fn caller(&self) -> Address;
-    fn call<D: DeserializeOwned>(
-        &mut self,
-        contract_name: &str,
-        function_name: &str,
-        arguments: Vec<Value>,
-    ) -> Result<D, Box<Error>>;
     fn get_memory<K: Into<Vec<u8>>, V: DeserializeOwned>(
         &mut self,
         contract: &'static str,

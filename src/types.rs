@@ -1,5 +1,6 @@
 use bytes::Bytes;
 use wasm_rpc::serde::{Deserialize, Serialize};
+use std::convert::TryInto;
 #[derive(Clone, Deserialize, Serialize, PartialEq, Debug)]
 pub struct Token {
     pub issuer: Address,
@@ -21,6 +22,18 @@ pub enum Address {
 impl From<&str> for Address {
     fn from(contract: &str) -> Self {
         Address::Contract(contract.to_string())
+    }
+}
+
+impl From<Vec<u8>> for Address {
+    fn from(public_key: Vec<u8>) -> Self {
+        Address::PublicKey(public_key[..].try_into().unwrap())
+    }
+}
+
+impl From<Bytes> for Address {
+    fn from(public_key: Bytes) -> Self {
+        Address::PublicKey(public_key.into_vec()[..].try_into().unwrap())
     }
 }
 
