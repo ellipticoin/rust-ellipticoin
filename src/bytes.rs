@@ -12,17 +12,13 @@ use wasm_rpc::serde::{
 struct BytesVisitor;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Bytes {
-    inner: Vec<u8>,
-}
+pub struct Bytes(pub Vec<u8>);
 impl Bytes {
     pub fn into_vec(self) -> Vec<u8> {
-        self.inner
+        self.0
     }
     pub fn from<T: Into<Vec<u8>>>(bytes: T) -> Self {
-        Bytes {
-            inner: bytes.into(),
-        }
+        Bytes(bytes.into())
     }
 }
 impl Serialize for Bytes {
@@ -30,7 +26,7 @@ impl Serialize for Bytes {
     where
         S: Serializer,
     {
-        serializer.serialize_bytes(&self.inner)
+        serializer.serialize_bytes(&self.0)
     }
 }
 
@@ -94,6 +90,6 @@ impl<'de> Deserialize<'de> for Bytes {
 }
 impl Into<Bytes> for Vec<u8> {
     fn into(self) -> Bytes {
-        Bytes { inner: self }
+        Bytes(self)
     }
 }
